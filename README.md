@@ -1,0 +1,2 @@
+# JGP.Ai
+Ai playground
