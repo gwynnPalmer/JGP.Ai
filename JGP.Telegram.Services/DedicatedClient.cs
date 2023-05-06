@@ -9,18 +9,25 @@ namespace JGP.Telegram.Services;
 public class DedicatedClient : IGPTClient
 {
     /// <summary>
+    ///     The initialization message
+    /// </summary>
+    private const string InitializationMessage =
+        "You are deployed in the format of a patient and friendly Telegram bot created by Joshua Gwynn-Palmer.";
+
+    /// <summary>
     ///     The gpt client
     /// </summary>
-    private static readonly IGPTClient GPTClient = new GPTClient("You are deployed in the format of a patient and friendly Telegram bot created by Joshua Gwynn-Palmer.");
+    private readonly IGPTClient GPTClient;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="DedicatedClient" /> class
     /// </summary>
     /// <param name="chatId">The chat id</param>
-    public DedicatedClient(long chatId)
+    public DedicatedClient(string openAiApiKey, long chatId)
     {
         ChatId = chatId;
         LastMessage = DateTimeOffset.UtcNow;
+        GPTClient = new TelegramOpenAiClient(openAiApiKey, InitializationMessage);
     }
 
     /// <summary>

@@ -1,6 +1,7 @@
 using System.Text;
 using JGP.Core.Services;
 using JGP.Telegram.Core.Commands;
+using JGP.Telegram.Core.Configuration;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Telegram.Bot;
@@ -32,9 +33,9 @@ public interface IBotRunner : IDisposable
 public class BotRunner : IBotRunner
 {
     /// <summary>
-    ///     The bot client
+    ///     The app settings
     /// </summary>
-    private static readonly ITelegramBotClient BotClient;
+    private readonly AppSettings _appSettings;
 
     /// <summary>
     ///     The dedicated clients
@@ -57,17 +58,9 @@ public class BotRunner : IBotRunner
     private readonly IUserService _userService;
 
     /// <summary>
-    ///     Initializes a new instance of the <see cref="BotRunner" /> class
+    ///     The bot client
     /// </summary>
-    /// <exception cref="InvalidOperationException">No API key found </exception>
-    static BotRunner()
-    {
-        var token = Environment.GetEnvironmentVariable("JGP_TELEGRAM_JGPTBOT_APIKEY", EnvironmentVariableTarget.User);
-        if (string.IsNullOrWhiteSpace(token))
-            throw new InvalidOperationException("No API key found", new ArgumentNullException(nameof(token)));
-
-        BotClient = new TelegramBotClient(token);
-    }
+    private readonly ITelegramBotClient BotClient;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="BotRunner" /> class
@@ -75,11 +68,18 @@ public class BotRunner : IBotRunner
     /// <param name="logger">The logger</param>
     /// <param name="memoryCache">The memory cache</param>
     /// <param name="userService">The user service</param>
-    public BotRunner(ILogger<BotRunner> logger, IMemoryCache memoryCache, IUserService userService)
+    /// <param name="appSettings">The app settings</param>
+    public BotRunner(ILogger<BotRunner> logger, IMemoryCache memoryCache, IUserService userService,
+        AppSettings appSettings)
     {
         _logger = logger;
         _memoryCache = memoryCache;
         _userService = userService;
+        _appSettings = appSettings;
+
+        if (string.IsNullOrWhiteSpace(appSettings.TelegramApiKey))
+            throw new ArgumentNullException(nameof(appSettings.TelegramApiKey));
+        BotClient = new TelegramBotClient(appSettings.TelegramApiKey);
     }
 
     #region DISPOSAL
@@ -125,7 +125,7 @@ public class BotRunner : IBotRunner
         var client = _dedicatedClients.FirstOrDefault(client => client.ChatId == chatId);
         if (client is not null) return client;
 
-        client = new DedicatedClient(chatId);
+        client = new DedicatedClient(_appSettings.OpenAiApiKey, chatId);
         _dedicatedClients.Add(client);
         return client;
     }
