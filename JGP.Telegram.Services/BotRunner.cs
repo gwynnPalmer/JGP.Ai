@@ -2,6 +2,7 @@ using System.Text;
 using JGP.Core.Services;
 using JGP.Telegram.Core.Commands;
 using JGP.Telegram.Core.Configuration;
+using JGP.Telegram.Services.Clients;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Telegram.Bot;
@@ -38,6 +39,11 @@ public class BotRunner : IBotRunner
     private readonly AppSettings _appSettings;
 
     /// <summary>
+    ///     The bot client
+    /// </summary>
+    private readonly ITelegramBotClient _botClient;
+
+    /// <summary>
     ///     The dedicated clients
     /// </summary>
     private readonly List<DedicatedClient> _dedicatedClients = new();
@@ -58,11 +64,6 @@ public class BotRunner : IBotRunner
     private readonly IUserService _userService;
 
     /// <summary>
-    ///     The bot client
-    /// </summary>
-    private readonly ITelegramBotClient BotClient;
-
-    /// <summary>
     ///     Initializes a new instance of the <see cref="BotRunner" /> class
     /// </summary>
     /// <param name="logger">The logger</param>
@@ -78,8 +79,11 @@ public class BotRunner : IBotRunner
         _appSettings = appSettings;
 
         if (string.IsNullOrWhiteSpace(appSettings.TelegramApiKey))
+        {
             throw new ArgumentNullException(nameof(appSettings.TelegramApiKey));
-        BotClient = new TelegramBotClient(appSettings.TelegramApiKey);
+        }
+
+        _botClient = new TelegramBotClient(appSettings.TelegramApiKey);
     }
 
     #region DISPOSAL
@@ -106,8 +110,8 @@ public class BotRunner : IBotRunner
             AllowedUpdates = Array.Empty<UpdateType>()
         };
 
-        BotClient.StartReceiving(HandleUpdateAsync, HandlePollingErrorAsync, receiverOptions, cancellationToken);
-        _ = await BotClient.GetMeAsync(cancellationToken);
+        _botClient.StartReceiving(HandleUpdateAsync, HandlePollingErrorAsync, receiverOptions, cancellationToken);
+        _ = await _botClient.GetMeAsync(cancellationToken);
     }
 
     #region DEDICATED CLIENTS
@@ -168,6 +172,12 @@ public class BotRunner : IBotRunner
                 return;
             }
 
+            if (update.Message.Voice is not null)
+            {
+                await HandleVoiceAsync(client, update, cancellationToken);
+                return;
+            }
+
             await ReplyFailureAsync(cancellationToken, chatId);
         }
         catch (Exception ex)
@@ -202,7 +212,7 @@ public class BotRunner : IBotRunner
     private async Task ReplyFailureAsync(CancellationToken cancellationToken, long chatId)
     {
         const string response = "I'm sorry, something went very wrong.";
-        _ = await BotClient.SendTextMessageAsync(chatId, response, cancellationToken: cancellationToken);
+        _ = await _botClient.SendTextMessageAsync(chatId, response, cancellationToken: cancellationToken);
     }
 
     /// <summary>
@@ -219,7 +229,7 @@ public class BotRunner : IBotRunner
             .AppendLine("If you believe this is a mistake, please contact Josh directly.")
             .ToString();
 
-        _ = await BotClient.SendTextMessageAsync(chatId, response, cancellationToken: cancellationToken);
+        _ = await _botClient.SendTextMessageAsync(chatId, response, cancellationToken: cancellationToken);
     }
 
     /// <summary>
@@ -236,12 +246,51 @@ public class BotRunner : IBotRunner
         if (string.IsNullOrWhiteSpace(messageText)) return;
 
         var chatId = update.Message?.Chat.Id;
+
         var response = await client.SubmitAsync(messageText);
 
         var chatLogCommand = new ChatLogCreateCommand(chatId.ToString(), messageText, response);
 
-        _ = await BotClient.SendTextMessageAsync(chatId, response, cancellationToken: cancellationToken);
+        _ = await _botClient.SendTextMessageAsync(chatId, response, cancellationToken: cancellationToken);
         _ = await _userService.AddChatLogAsync(chatLogCommand, cancellationToken);
+    }
+
+    /// <summary>
+    ///     Handles the voice using the specified client
+    /// </summary>
+    /// <param name="client">The client</param>
+    /// <param name="update">The update</param>
+    /// <param name="cancellationToken">The cancellation token</param>
+    /// <returns>System.Threading.Tasks.ValueTask</returns>
+    private async ValueTask HandleVoiceAsync(DedicatedClient client, Update update, CancellationToken cancellationToken)
+    {
+        var chatId = update.Message?.Chat.Id;
+
+        if (update.Message?.Voice == null) return;
+
+        var fileUrl = await GetVoiceNoteFileUrlAsync(update, cancellationToken);
+
+        var (request, response) = await client.SubmitVoiceNoteAsync(fileUrl);
+
+        var chatLogCommand = new ChatLogCreateCommand(chatId.ToString(), request, response);
+
+        _ = await _botClient.SendTextMessageAsync(chatId, response, cancellationToken: cancellationToken);
+        _ = await _userService.AddChatLogAsync(chatLogCommand, cancellationToken);
+    }
+
+    /// <summary>
+    ///     Gets the voice note file url using the specified update
+    /// </summary>
+    /// <param name="update">The update</param>
+    /// <param name="cancellationToken">The cancellation token</param>
+    /// <returns>Task&lt;string&gt;</returns>
+    private async Task<string> GetVoiceNoteFileUrlAsync(Update update, CancellationToken cancellationToken)
+    {
+        var voice = update.Message?.Voice;
+        var fileId = voice?.FileId;
+        var fileInfo = await _botClient.GetFileAsync(fileId, cancellationToken);
+        var filePath = fileInfo.FilePath;
+        return $"https://api.telegram.org/file/bot{_appSettings.TelegramApiKey}/{filePath}";
     }
 
     #endregion
@@ -298,12 +347,12 @@ public class BotRunner : IBotRunner
         {
             _logger.LogInformation($"User {user.Name} has been verified");
             var verifiedResponse = $"Hi {user.Name}, You have been verified";
-            _ = await BotClient.SendTextMessageAsync(chatId, verifiedResponse, cancellationToken: cancellationToken);
+            _ = await _botClient.SendTextMessageAsync(chatId, verifiedResponse, cancellationToken: cancellationToken);
         }
         else
         {
             const string unverifiedResponse = "We were unable to verify you at this time";
-            _ = await BotClient.SendTextMessageAsync(chatId, unverifiedResponse, cancellationToken: cancellationToken);
+            _ = await _botClient.SendTextMessageAsync(chatId, unverifiedResponse, cancellationToken: cancellationToken);
         }
     }
 
@@ -354,7 +403,7 @@ public class BotRunner : IBotRunner
             .AppendLine(" Please respond with \"Token:[TOKEN]\" to authenticate, or contact the bot owner.")
             .ToString();
 
-        _ = await BotClient.SendTextMessageAsync(chatId, unverifiedResponse, cancellationToken: cancellationToken);
+        _ = await _botClient.SendTextMessageAsync(chatId, unverifiedResponse, cancellationToken: cancellationToken);
     }
 
     #endregion

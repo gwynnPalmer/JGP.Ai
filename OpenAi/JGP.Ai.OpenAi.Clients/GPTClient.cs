@@ -5,20 +5,6 @@ using OpenAI_API.Models;
 namespace JGP.Ai.OpenAi.Clients;
 
 /// <summary>
-///     Interface for the GPTClient, specify the method signature for SubmitAsync.
-/// </summary>
-public interface IGPTClient
-{
-    /// <summary>
-    ///     Submit the message to the GPT model for processing
-    /// </summary>
-    /// <param name="message">The message to submit to the GPT-3 model</param>
-    /// <param name="systemMessage">A context message.</param>
-    /// <returns>The GPT model response as a string</returns>
-    Task<string?> SubmitAsync(string? message, string? systemMessage = null);
-}
-
-/// <summary>
 ///     Client to interact with the GPT-3 language model provided by OpenAI using the OpenAI API.
 /// </summary>
 public class GPTClient : IGPTClient

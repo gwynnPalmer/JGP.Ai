@@ -1,6 +1,6 @@
 using JGP.Telegram.Services;
 
-namespace JGP.Telegram.Host;
+namespace App.WindowsService;
 
 /// <summary>
 ///     Class telegram bot worker

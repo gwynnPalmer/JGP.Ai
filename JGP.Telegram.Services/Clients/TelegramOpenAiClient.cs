@@ -3,7 +3,7 @@ using OpenAI_API;
 using OpenAI_API.Chat;
 using OpenAI_API.Models;
 
-namespace JGP.Telegram.Services;
+namespace JGP.Telegram.Services.Clients;
 
 /// <summary>
 ///     Class telegram open ai client
