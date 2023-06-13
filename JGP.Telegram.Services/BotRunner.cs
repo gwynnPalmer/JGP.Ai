@@ -269,8 +269,11 @@ public class BotRunner : IBotRunner
         if (update.Message?.Voice == null) return;
 
         var fileUrl = await GetVoiceNoteFileUrlAsync(update, cancellationToken);
+        _logger.LogInformation("Voice note file url: {FileUrl}", fileUrl);
 
         var (request, response) = await client.SubmitVoiceNoteAsync(fileUrl);
+        _logger.LogInformation("Voice note request: {Request}", request);
+        _logger.LogInformation("Voice note response: {Response}", response);
 
         var chatLogCommand = new ChatLogCreateCommand(chatId.ToString(), request, response);
 

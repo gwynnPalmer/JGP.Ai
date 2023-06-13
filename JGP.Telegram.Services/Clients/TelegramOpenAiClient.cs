@@ -30,7 +30,7 @@ public class TelegramOpenAiClient : IGPTClient
     {
         GPTApi = new OpenAIAPI(openAiApiKey);
         _conversation = GPTApi.Chat.CreateConversation();
-        _conversation.Model = Model.ChatGPTTurbo;
+        _conversation.Model = new Model("gpt-3.5-turbo-16k-0613");
 
         if (!string.IsNullOrWhiteSpace(systemMessage))
         {
