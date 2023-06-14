@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net7.0-windows</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\JGP.Telegram.Data.EntityFramework\JGP.Telegram.Data.EntityFramework.csproj" />
+        <ProjectReference Include="..\JGP.Telegram.Models\JGP.Telegram.Models.csproj" />
+        <ProjectReference Include="..\OpenAi\JGP.Ai.OpenAi.Clients\JGP.Ai.OpenAi.Clients.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="JGP.Core" Version="1.0.6" />
+        <PackageReference Include="Telegram.Bot" Version="19.0.0" />
+        <PackageReference Include="Concentus" Version="1.1.7" />
+        <PackageReference Include="Concentus.OggFile" Version="1.0.4" />
+        <PackageReference Include="NAudio.Core" Version="2.1.0" />
+        <PackageReference Include="NVorbis" Version="0.10.5" />
+    </ItemGroup>
+
+</Project>
