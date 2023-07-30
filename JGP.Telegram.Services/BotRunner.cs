@@ -120,16 +120,21 @@ public class BotRunner : IBotRunner
     ///     Gets the dedicated client using the specified chat id
     /// </summary>
     /// <param name="chatId">The chat id</param>
+    /// <param name="user">The user</param>
     /// <returns>The client</returns>
-    private DedicatedClient GetDedicatedClient(long chatId)
+    private DedicatedClient GetDedicatedClient(long chatId, string? user = null)
     {
         _dedicatedClients.RemoveAll(client =>
             client.ChatId != chatId && client.LastMessage < DateTimeOffset.UtcNow.AddMinutes(-30));
 
-        var client = _dedicatedClients.FirstOrDefault(client => client.ChatId == chatId);
+        var client = _dedicatedClients.Find(client => client.ChatId == chatId);
         if (client is not null) return client;
 
-        client = new DedicatedClient(_appSettings.OpenAiApiKey, chatId);
+        client = new DedicatedClient(_appSettings.OpenAiApiKey, chatId)
+        {
+            User = user
+        };
+
         _dedicatedClients.Add(client);
         return client;
     }
@@ -165,7 +170,7 @@ public class BotRunner : IBotRunner
                 return;
             }
 
-            var client = GetDedicatedClient(chatId);
+            var client = GetDedicatedClient(chatId, user.Name);
             if (update.Message.Text is not null)
             {
                 await HandleMessageAsync(client, update, cancellationToken);
@@ -247,7 +252,11 @@ public class BotRunner : IBotRunner
 
         var chatId = update.Message?.Chat.Id;
 
-        var response = await client.SubmitAsync(messageText);
+        var systemMessage = string.IsNullOrWhiteSpace(client.User)
+            ? null
+            : $"You are speaking with {client.User}";
+
+        var response = await client.SubmitAsync(messageText, systemMessage);
 
         var chatLogCommand = new ChatLogCreateCommand(chatId.ToString(), messageText, response);
 
@@ -271,7 +280,11 @@ public class BotRunner : IBotRunner
         var fileUrl = await GetVoiceNoteFileUrlAsync(update, cancellationToken);
         _logger.LogInformation("Voice note file url: {FileUrl}", fileUrl);
 
-        var (request, response) = await client.SubmitVoiceNoteAsync(fileUrl);
+        var systemMessage = string.IsNullOrWhiteSpace(client.User)
+            ? null
+            : $"You are speaking with {client.User}";
+
+        var (request, response) = await client.SubmitVoiceNoteAsync(fileUrl, systemMessage);
         _logger.LogInformation("Voice note request: {Request}", request);
         _logger.LogInformation("Voice note response: {Response}", response);
 

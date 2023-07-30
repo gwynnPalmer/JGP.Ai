@@ -54,6 +54,12 @@ public class DedicatedClient : IGPTClient //, IVoiceClient
     public long ChatId { get; }
 
     /// <summary>
+    ///     Gets the value of the user
+    /// </summary>
+    /// <value>System.Nullable&lt;string&gt;</value>
+    public string? User { get; set;  }
+
+    /// <summary>
     ///     Gets or sets the value of the last message
     /// </summary>
     /// <value>System.DateTimeOffset</value>
@@ -75,8 +81,9 @@ public class DedicatedClient : IGPTClient //, IVoiceClient
     ///     Submits the voice note using the specified voice note url
     /// </summary>
     /// <param name="voiceNoteUrl">The voice note url</param>
+    /// <param name="systemMessage">The system message</param>
     /// <returns>ValueTask&lt;(string? request, string? response)&gt;</returns>
-    public async ValueTask<(string? request, string? response)> SubmitVoiceNoteAsync(string? voiceNoteUrl)
+    public async ValueTask<(string? request, string? response)> SubmitVoiceNoteAsync(string? voiceNoteUrl, string? systemMessage = null)
     {
         var directory = DirectoryBuilder.Build(ChatId);
         var fileName = $"{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}.ogg";
@@ -84,16 +91,17 @@ public class DedicatedClient : IGPTClient //, IVoiceClient
 
         var bytes = await _httpClient.GetByteArrayAsync(voiceNoteUrl);
         await File.WriteAllBytesAsync(audioPath, bytes);
-        return await SubmitVoiceNoteToWhisperAndChatGptAsync(audioPath);
+        return await SubmitVoiceNoteToWhisperAndChatGptAsync(audioPath, systemMessage);
     }
 
     /// <summary>
     ///     Submits the voice note using the specified file path
     /// </summary>
     /// <param name="filePath">The file path</param>
+    /// <param name="systemMessage">The system message</param>
     /// <returns>ValueTask&lt;string?&gt;</returns>
     private async ValueTask<(string? request, string? response)> SubmitVoiceNoteToWhisperAndChatGptAsync(
-        string? filePath)
+        string? filePath, string? systemMessage = null)
     {
         LastMessage = DateTimeOffset.UtcNow;
 
@@ -116,7 +124,7 @@ public class DedicatedClient : IGPTClient //, IVoiceClient
         }
 
         var request = whisperResponse.Text;
-        var response = await SubmitAsync(whisperResponse.Text);
+        var response = await SubmitAsync(whisperResponse.Text, systemMessage);
 
         return (request, response);
     }

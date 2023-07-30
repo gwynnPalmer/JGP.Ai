@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace DotNetGPT;
@@ -48,6 +49,15 @@ public class ResponseModel
     /// <value>System.CommandLine.Help.DefaultHelpText+Usage</value>
     [JsonPropertyName("usage")]
     public Usage Usage { get; set; }
+
+    /// <summary>
+    ///     Describes whether this instance is function call
+    /// </summary>
+    /// <returns>true if this instance is [function call]; otherwise, false.</returns>
+    public bool IsFunctionCall()
+    {
+        return Choices.Count >= 1 && Choices[0].Message.HasFunctionCall;
+    }
 }
 
 /// <summary>
@@ -80,28 +90,21 @@ public class Choice
 /// <summary>
 ///     Class response message
 /// </summary>
-public class ResponseMessage
+/// <seealso cref="Message" />
+public class ResponseMessage : Message
 {
-    /// <summary>
-    ///     Gets or sets the value of the role
-    /// </summary>
-    /// <value>System.String</value>
-    [JsonPropertyName("role")]
-    public string Role { get; set; }
-
-    /// <summary>
-    ///     Gets or sets the value of the content
-    /// </summary>
-    /// <value>System.String</value>
-    [JsonPropertyName("content")]
-    public string Content { get; set; }
-
     /// <summary>
     ///     Gets or sets the value of the function call
     /// </summary>
     /// <value>System.Nullable&lt;FunctionCall&gt;</value>
     [JsonPropertyName("function_call")]
     public FunctionCall? FunctionCall { get; set; }
+
+    /// <summary>
+    ///     Gets the value of the has function call
+    /// </summary>
+    /// <value>Interop+BOOL</value>
+    public bool HasFunctionCall => FunctionCall != null;
 }
 
 /// <summary>
@@ -122,6 +125,17 @@ public class FunctionCall
     /// <value>System.String</value>
     [JsonPropertyName("arguments")]
     public string Arguments { get; set; }
+
+    /// <summary>
+    ///     Returns the function parameters using the specified options
+    /// </summary>
+    /// <typeparam name="T">The </typeparam>
+    /// <param name="options">The options</param>
+    /// <returns>T</returns>
+    public T ToFunctionParameters<T>(JsonSerializerOptions? options) where T : class
+    {
+        return JsonSerializer.Deserialize<T>(Arguments, options);
+    }
 }
 
 /// <summary>
