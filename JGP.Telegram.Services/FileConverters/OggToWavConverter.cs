@@ -37,13 +37,13 @@ public class OggToWavConverter
 
         return wavFilePath;
     }
-    
+
     private static string BuildWavFilePath(string? directory, long chatId)
     {
         directory = string.IsNullOrWhiteSpace(directory)
             ? DirectoryBuilder.Build(chatId)
-            : $"directory\\{chatId}";
-        
+            : $"{directory}\\{chatId}";
+
         _ = Directory.CreateDirectory(directory);
         return Path.Combine(directory, $"{Guid.NewGuid()}.wav");
     }
