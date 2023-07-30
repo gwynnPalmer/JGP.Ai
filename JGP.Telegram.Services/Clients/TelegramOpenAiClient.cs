@@ -17,20 +17,15 @@ public class TelegramOpenAiClient : IGPTClient
     private readonly Conversation _conversation;
 
     /// <summary>
-    ///     The gpt api
-    /// </summary>
-    private readonly IOpenAIAPI GPTApi;
-
-    /// <summary>
     ///     Initializes a new instance of the <see cref="TelegramOpenAiClient" /> class
     /// </summary>
     /// <param name="openAiApiKey">The open ai api key</param>
     /// <param name="systemMessage">The system message</param>
     public TelegramOpenAiClient(string openAiApiKey, string? systemMessage = null)
     {
-        GPTApi = new OpenAIAPI(openAiApiKey);
-        _conversation = GPTApi.Chat.CreateConversation();
-        _conversation.Model = new Model("gpt-3.5-turbo-16k-0613");
+        IOpenAIAPI gptApi = new OpenAIAPI(openAiApiKey);
+        _conversation = gptApi.Chat.CreateConversation();
+        _conversation.Model = new Model("gpt-4-0314");
 
         if (!string.IsNullOrWhiteSpace(systemMessage))
         {
