@@ -1,6 +1,6 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 
-namespace DotNetGPT;
+namespace DotNetGPT.Models;
 
 /// <summary>
 ///     Class request model
@@ -26,14 +26,42 @@ public class RequestModel
     /// </summary>
     /// <value>List&lt;Function&gt;</value>
     [JsonPropertyName("functions")]
-    public List<Function> Functions { get; set; } = new();
+    public List<Function> Functions { get; private set; }
 
     /// <summary>
     ///     Gets or sets the value of the function call
     /// </summary>
     /// <value>System.String</value>
     [JsonPropertyName("function_call")]
-    public string FunctionCall { get; set; } = "auto";
+    public string? FunctionCall { get; set; }
+
+    /// <summary>
+    ///     Appends the function using the specified function
+    /// </summary>
+    /// <param name="function">The function</param>
+    /// <param name="functionCallValue">The function call value</param>
+    public void AppendFunction(Function? function, string functionCallValue = "auto")
+    {
+        if (function == null) return;
+
+        Functions ??= new();
+        Functions.Add(function);
+        FunctionCall = functionCallValue;
+    }
+
+    /// <summary>
+    ///     Sets the functions using the specified functions
+    /// </summary>
+    /// <param name="functions">The functions</param>
+    /// <param name="functionCallValue">The function call value</param>
+    public void AppendFunctions(List<Function>? functions, string functionCallValue = "auto")
+    {
+        if (functions == null || functions.Count == 0) return;
+
+        Functions ??= new();
+        Functions.AddRange(functions);
+        FunctionCall = functionCallValue;
+    }
 }
 
 /// <summary>

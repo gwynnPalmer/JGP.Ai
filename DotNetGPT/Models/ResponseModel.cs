@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace DotNetGPT;
+namespace DotNetGPT.Models;
 
 /// <summary>
 ///     Class response model
@@ -51,12 +51,28 @@ public class ResponseModel
     public Usage Usage { get; set; }
 
     /// <summary>
+    ///     Gets or sets the value of the error
+    /// </summary>
+    /// <value>System.Nullable&lt;Error&gt;</value>
+    [JsonPropertyName("error")]
+    public Error? Error { get; set; }
+
+    /// <summary>
     ///     Describes whether this instance is function call
     /// </summary>
     /// <returns>true if this instance is [function call]; otherwise, false.</returns>
     public bool IsFunctionCall()
     {
-        return Choices.Count >= 1 && Choices[0].Message.HasFunctionCall;
+        return Choices?.Count >= 1 && Choices[0].Message.HasFunctionCall;
+    }
+
+    /// <summary>
+    ///     Describes whether this instance is success
+    /// </summary>
+    /// <returns>true if this instance is [success]; otherwise, false.</returns>
+    public bool IsSuccess()
+    {
+        return Error == null;
     }
 }
 
@@ -132,7 +148,7 @@ public class FunctionCall
     /// <typeparam name="T">The </typeparam>
     /// <param name="options">The options</param>
     /// <returns>T</returns>
-    public T ToFunctionParameters<T>(JsonSerializerOptions? options) where T : class
+    public T ToFunctionParameters<T>(JsonSerializerOptions? options = null) where T : class
     {
         return JsonSerializer.Deserialize<T>(Arguments, options);
     }
@@ -163,4 +179,24 @@ public class Usage
     /// <value>int</value>
     [JsonPropertyName("total_tokens")]
     public int TotalTokens { get; set; }
+}
+
+/// <summary>
+///     Class error
+/// </summary>
+public class Error
+{
+    /// <summary>
+    ///     Gets or sets the value of the message
+    /// </summary>
+    /// <value>System.Nullable&lt;string&gt;</value>
+    [JsonPropertyName("message")]
+    public string? Message { get; set; }
+
+    /// <summary>
+    ///     Gets or sets the value of the type
+    /// </summary>
+    /// <value>System.Nullable&lt;string&gt;</value>
+    [JsonPropertyName("type")]
+    public string? Type { get; set; }
 }

@@ -9,6 +9,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\JGP.Telegram.Services\JGP.Telegram.Services.csproj" />
+      <ProjectReference Include="..\OpenAi\JGP.Ai.OpenAi.Clients\JGP.Ai.OpenAi.Clients.csproj" />
     </ItemGroup>
 
 </Project>

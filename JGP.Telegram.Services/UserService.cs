@@ -250,7 +250,7 @@ public class UserService : IUserService
                 .ToListAsync(cancellationToken);
 
             var user = users
-                .FirstOrDefault(user => user.ChatIds.Contains(chatId));
+                .Find(user => user.ChatIds.Contains(chatId));
 
             if (user == null) return ActionReceipt.GetErrorReceipt("User not found");
 
@@ -305,7 +305,7 @@ public class UserService : IUserService
                 .ToListAsync(cancellationToken);
 
             var user = users
-                .FirstOrDefault(user => user.ChatIds.Contains(chatId));
+                .Find(user => user.ChatIds.Contains(chatId));
 
             if (user == null) return ActionReceipt.GetErrorReceipt("User not found");
 
@@ -356,7 +356,7 @@ public class UserService : IUserService
                 .ToListAsync(cancellationToken);
 
             return users
-                .FirstOrDefault(user => user.ChatIds.Contains(chatId));
+                .Find(user => user.ChatIds.Contains(chatId));
         }
         catch (Exception ex)
         {

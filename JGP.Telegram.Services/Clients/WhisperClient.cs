@@ -1,6 +1,6 @@
 using System.Net.Http.Headers;
 using System.Text.Json;
-using JGP.Telegram.Models;
+using DotNetGPT.Models;
 
 namespace JGP.Telegram.Services.Clients;
 
@@ -50,7 +50,7 @@ public class WhisperClient
     public async ValueTask<WhisperResponseModel?> SubmitAsync(string filePath)
     {
         if (!File.Exists(filePath)) return null;
-        
+
         var fileContent = new ByteArrayContent(await File.ReadAllBytesAsync(filePath));
         fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse("audio/wav");
 

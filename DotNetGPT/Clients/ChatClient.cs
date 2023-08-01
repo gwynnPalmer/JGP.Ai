@@ -1,8 +1,10 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using DotNetGPT.Models;
+using SharpToken;
 
-namespace DotNetGPT;
+namespace DotNetGPT.Clients;
 
 /// <summary>
 ///     Interface chat client
@@ -47,8 +49,9 @@ public interface IChatClient
     ///     Submits the prompt
     /// </summary>
     /// <param name="prompt">The prompt</param>
+    /// <param name="systemMessage">The system message</param>
     /// <returns>Task&lt;Nullable&lt;ResponseModel?&gt;&gt;</returns>
-    Task<ResponseModel?> SubmitAsync(string prompt);
+    Task<ResponseModel?> SubmitAsync(string prompt, string? systemMessage = null);
 
     /// <summary>
     ///     Submits the function response using the specified function name
@@ -92,6 +95,13 @@ public class ChatClient : IChatClient
     private readonly string _chatUrl;
 
     /// <summary>
+    ///     The model
+    /// </summary>
+    private readonly string _model;
+
+    private static readonly GptEncoding _encoding = GptEncoding.GetEncoding("cl100k_base");
+
+    /// <summary>
     ///     Gets the value of the context
     /// </summary>
     /// <value>List&lt;Message&gt;</value>
@@ -101,7 +111,7 @@ public class ChatClient : IChatClient
     ///     Gets the value of the functions
     /// </summary>
     /// <value>List&lt;Function&gt;</value>
-    public List<Function> Functions { get; private set; } = new();
+    public List<Function> Functions { get; } = new();
 
     /// <summary>
     ///     Appends the system message using the specified message
@@ -126,10 +136,14 @@ public class ChatClient : IChatClient
     /// </summary>
     /// <param name="chatUrl">The base url</param>
     /// <param name="apiKey">The api key</param>
-    private ChatClient(string chatUrl, string apiKey)
+    /// <param name="model">The model</param>
+    private ChatClient(string chatUrl, string apiKey, string? model)
     {
         _chatUrl = chatUrl;
         _apiKey = apiKey;
+        _model = string.IsNullOrEmpty(model)
+            ? "gpt-3.5-turbo-0613"
+            : model;
     }
 
     /// <summary>
@@ -137,10 +151,11 @@ public class ChatClient : IChatClient
     /// </summary>
     /// <param name="apiKey">The api key</param>
     /// <param name="baseUrl">The base url</param>
+    /// <param name="model">The model</param>
     /// <returns>ChatClient</returns>
-    public static ChatClient Create(string apiKey, string baseUrl = "https://api.openai.com/v1/chat/completions")
+    public static ChatClient Create(string apiKey, string? model = null)
     {
-        return new ChatClient(baseUrl, apiKey);
+        return new ChatClient("https://api.openai.com/v1/chat/completions", apiKey, model);
     }
 
     #endregion
@@ -203,6 +218,7 @@ public class ChatClient : IChatClient
         //TODO: Review Context handling in this situation
         Context = requestModel.Messages;
         TrimContext();
+        requestModel.Messages = Context;
 
         var json = JsonSerializer.Serialize(requestModel, Options);
 
@@ -217,7 +233,7 @@ public class ChatClient : IChatClient
 
         using var chatResponse = await _httpClient.SendAsync(chatRequest);
         var responseContent = await chatResponse.Content.ReadAsStringAsync();
-        var response =  JsonSerializer.Deserialize<ResponseModel>(responseContent, Options);
+        var response = JsonSerializer.Deserialize<ResponseModel>(responseContent, Options);
 
         if (response is { Choices.Count: >= 1 })
         {
@@ -231,8 +247,9 @@ public class ChatClient : IChatClient
     ///     Submits the prompt
     /// </summary>
     /// <param name="prompt">The prompt</param>
+    /// <param name="systemMessage">The system message</param>
     /// <returns>Task&lt;ResponseModel?&gt;</returns>
-    public async Task<ResponseModel?> SubmitAsync(string prompt)
+    public async Task<ResponseModel?> SubmitAsync(string prompt, string? systemMessage = null)
     {
         var request = BuildRequest(prompt);
         return await SubmitAsync(request);
@@ -267,22 +284,50 @@ public class ChatClient : IChatClient
     /// </summary>
     private void TrimContext()
     {
-        //TODO: Implement tokenizer.
-        while (Context.Sum(x => x.Content.Length) > 4000) Context.RemoveAt(0);
+
+        var uniqueMessages = new List<Message>();
+        var seenMessages = new HashSet<string>();
+
+        for (var i = Context.Count - 1; i >= 0; i--)
+        {
+            var message = Context[i];
+            if (!string.IsNullOrEmpty(message.Content) && seenMessages.Add(message.Content))
+            {
+                uniqueMessages.Add(message);
+            }
+        }
+
+        uniqueMessages.Reverse();
+        Context = uniqueMessages;
+
+        var contextString = Context
+            .Aggregate(new StringBuilder(), (sb, message) => sb.Append(message.Content))
+            .ToString();
+
+        while (_encoding.Encode(contextString).Count > 3500)
+        {
+            Context.RemoveAt(0);
+            contextString = Context
+                .Aggregate(new StringBuilder(), (sb, message) => sb.Append(message.Content))
+                .ToString();
+        }
     }
 
     /// <summary>
     ///     Builds the request using the specified prompt
     /// </summary>
     /// <param name="prompt">The prompt</param>
+    /// <param name="systemMessage">The system message</param>
     /// <returns>The request</returns>
-    private RequestModel BuildRequest(string? prompt = null)
+    private RequestModel BuildRequest(string? prompt = null, string? systemMessage = null)
     {
         var request = new RequestModel
         {
-            Messages = Context,
-            Functions = Functions
+            Model = _model,
+            Messages = Context
         };
+
+        if (Functions.Count > 0) request.AppendFunctions(Functions, "auto");
 
         if (!string.IsNullOrWhiteSpace(prompt))
         {
@@ -292,35 +337,17 @@ public class ChatClient : IChatClient
                 Content = prompt
             });
         }
+        if (!string.IsNullOrWhiteSpace(systemMessage))
+        {
+            request.Messages.Insert(request.Messages.Count, new Message
+            {
+                Role = ChatConstants.SystemRole,
+                Content = systemMessage
+            });
+        }
 
         return request;
     }
 
     #endregion
-}
-
-/// <summary>
-///     Class chat constants
-/// </summary>
-public static class ChatConstants
-{
-    /// <summary>
-    ///     The user role
-    /// </summary>
-    public const string UserRole = "user";
-
-    /// <summary>
-    ///     The system role
-    /// </summary>
-    public const string SystemRole = "system";
-
-    /// <summary>
-    ///     The assistant role
-    /// </summary>
-    public const string AssistantRole = "assistant";
-
-    /// <summary>
-    ///     The function role
-    /// </summary>
-    public const string FunctionRole = "function";
 }

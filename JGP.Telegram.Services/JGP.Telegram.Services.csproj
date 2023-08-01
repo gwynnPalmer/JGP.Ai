@@ -7,9 +7,8 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\DotNetGPT\DotNetGPT.csproj" />
         <ProjectReference Include="..\JGP.Telegram.Data.EntityFramework\JGP.Telegram.Data.EntityFramework.csproj" />
-        <ProjectReference Include="..\JGP.Telegram.Models\JGP.Telegram.Models.csproj" />
-        <ProjectReference Include="..\OpenAi\JGP.Ai.OpenAi.Clients\JGP.Ai.OpenAi.Clients.csproj" />
     </ItemGroup>
 
     <ItemGroup>

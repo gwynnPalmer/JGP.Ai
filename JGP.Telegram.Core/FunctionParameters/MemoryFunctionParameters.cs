@@ -19,12 +19,19 @@ public class MemoryFunctionParameters
     /// </summary>
     /// <value>int</value>
     [JsonPropertyName("skip")]
-    public int Skip { get; set; }
+    public int Skip { get; set; } = 0;
 
     /// <summary>
     ///     Gets or sets the value of the take
     /// </summary>
     /// <value>int</value>
     [JsonPropertyName("take")]
-    public int Take { get; set; }
+    public int Take { get; set; } = 5;
+
+    /// <summary>
+    ///     Gets or sets the value of the chat id
+    /// </summary>
+    /// <value>long</value>
+    [JsonPropertyName("chatId")]
+    public long ChatId { get; set; }
 }

@@ -59,6 +59,11 @@ public class BotRunner : IBotRunner
     private readonly IMemoryCache _memoryCache;
 
     /// <summary>
+    ///     The memory service
+    /// </summary>
+    private readonly IMemoryService _memoryService;
+
+    /// <summary>
     ///     The user service
     /// </summary>
     private readonly IUserService _userService;
@@ -68,13 +73,15 @@ public class BotRunner : IBotRunner
     /// </summary>
     /// <param name="logger">The logger</param>
     /// <param name="memoryCache">The memory cache</param>
+    /// <param name="memoryService">The memory service</param>
     /// <param name="userService">The user service</param>
     /// <param name="appSettings">The app settings</param>
-    public BotRunner(ILogger<BotRunner> logger, IMemoryCache memoryCache, IUserService userService,
+    public BotRunner(ILogger<BotRunner> logger, IMemoryCache memoryCache, IMemoryService memoryService, IUserService userService,
         AppSettings appSettings)
     {
         _logger = logger;
         _memoryCache = memoryCache;
+        _memoryService = memoryService;
         _userService = userService;
         _appSettings = appSettings;
 
@@ -130,7 +137,7 @@ public class BotRunner : IBotRunner
         var client = _dedicatedClients.Find(client => client.ChatId == chatId);
         if (client is not null) return client;
 
-        client = new DedicatedClient(_appSettings.OpenAiApiKey, chatId)
+        client = new DedicatedClient(_memoryService, _appSettings.OpenAiApiKey, chatId)
         {
             User = user
         };
@@ -160,7 +167,7 @@ public class BotRunner : IBotRunner
             var user = await GetUserAsync(chatId);
             if (user is null)
             {
-                await HandleVerificationProcessAsync(update, cancellationToken, chatId);
+                await HandleVerificationProcessAsync(update, chatId, cancellationToken);
                 return;
             }
 
@@ -254,9 +261,9 @@ public class BotRunner : IBotRunner
 
         var systemMessage = string.IsNullOrWhiteSpace(client.User)
             ? null
-            : $"You are speaking with {client.User}";
+            : $"You are speaking with {client.User}, ChatId: {chatId}";
 
-        var response = await client.SubmitAsync(messageText, systemMessage);
+        var response = await client.SubmitAsync(chatId, messageText, systemMessage);
 
         var chatLogCommand = new ChatLogCreateCommand(chatId.ToString(), messageText, response);
 
@@ -282,9 +289,9 @@ public class BotRunner : IBotRunner
 
         var systemMessage = string.IsNullOrWhiteSpace(client.User)
             ? null
-            : $"You are speaking with {client.User}";
+            : $"You are speaking with {client.User}, ChatId: {chatId}";
 
-        var (request, response) = await client.SubmitVoiceNoteAsync(fileUrl, systemMessage);
+        var (request, response) = await client.SubmitVoiceNoteAsync(chatId, fileUrl, systemMessage);
         _logger.LogInformation("Voice note request: {Request}", request);
         _logger.LogInformation("Voice note response: {Response}", response);
 
@@ -334,10 +341,10 @@ public class BotRunner : IBotRunner
     ///     Handles the verification process using the specified update
     /// </summary>
     /// <param name="update">The update</param>
-    /// <param name="cancellationToken">The cancellation token</param>
     /// <param name="chatId">The chat id</param>
+    /// <param name="cancellationToken">The cancellation token</param>
     /// <returns>System.Threading.Tasks.Task</returns>
-    private async Task HandleVerificationProcessAsync(Update update, CancellationToken cancellationToken, long chatId)
+    private async Task HandleVerificationProcessAsync(Update update, long chatId, CancellationToken cancellationToken)
     {
         if (!string.IsNullOrWhiteSpace(update.Message.Text) &&
             update.Message.Text.StartsWith("Token:", StringComparison.OrdinalIgnoreCase))
