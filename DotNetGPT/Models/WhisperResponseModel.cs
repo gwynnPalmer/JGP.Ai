@@ -1,6 +1,6 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 
-namespace JGP.Telegram.Models;
+namespace DotNetGPT.Models;
 
 /// <summary>
 ///     Class whisper response model

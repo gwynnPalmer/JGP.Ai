@@ -35,6 +35,7 @@ public static class IocConfiguration
     private static void RegisterServices(IServiceCollection services)
     {
         services.AddTransient<IUserService, UserService>();
+        services.AddTransient<IMemoryService, MemoryService>();
         services.AddTransient<IBotRunner, BotRunner>();
     }
 
@@ -46,11 +47,11 @@ public static class IocConfiguration
     private static void AddContext(IConfiguration configuration, IServiceCollection services)
     {
         var connectionString = configuration.GetConnectionString("ChatContext");
-        
+
         services.AddDbContext<ChatContext>(options =>
             options.UseSqlServer(connectionString, builder =>
                 builder.EnableRetryOnFailure(3, TimeSpan.FromSeconds(3), null)));
-        
+
         services.AddTransient<IChatContext, ChatContext>();
     }
 
