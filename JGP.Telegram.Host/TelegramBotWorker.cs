@@ -1,5 +1,3 @@
-using JGP.Telegram.Services;
-
 namespace App.WindowsService;
 
 /// <summary>

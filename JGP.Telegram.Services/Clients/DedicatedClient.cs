@@ -1,6 +1,7 @@
-using DotNetGPT;
-using DotNetGPT.Clients;
-using DotNetGPT.Models;
+using JGP.DotNetGPT;
+using JGP.DotNetGPT.Clients;
+using JGP.DotNetGPT.Models;
+using JGP.Telegram.Core.Configuration;
 using JGP.Telegram.Services.Builders;
 using JGP.Telegram.Services.FileConverters;
 
@@ -37,15 +38,25 @@ public class DedicatedClient : IDedicatedClient
     /// <summary>
     ///     The from seconds
     /// </summary>
-    private static readonly HttpClient _httpClient = new()
+    private static readonly HttpClient HttpClient = new()
     {
-        Timeout = TimeSpan.FromSeconds(45)
+        Timeout = TimeSpan.FromSeconds(60)
     };
 
     /// <summary>
     ///     The gpt client
     /// </summary>
     private readonly IChatClient _chatClient;
+
+    /// <summary>
+    ///     The function handler factory
+    /// </summary>
+    private readonly FunctionHandlerFactory _functionHandlerFactory = FunctionHandlerFactory.Create();
+
+    /// <summary>
+    ///     The google search service
+    /// </summary>
+    private readonly GoogleSearchService _googleSearchService;
 
     /// <summary>
     ///     The memory service
@@ -58,33 +69,37 @@ public class DedicatedClient : IDedicatedClient
     private readonly WhisperClient _whisperClient;
 
     /// <summary>
-    ///     The function handler factory
-    /// </summary>
-    private readonly FunctionHandlerFactory _functionHandlerFactory = FunctionHandlerFactory.Create();
-
-    /// <summary>
     ///     Initializes a new instance of the <see cref="DedicatedClient" /> class
     /// </summary>
     /// <param name="memoryService">The memory service</param>
-    /// <param name="openAiApiKey">The open ai api key</param>
+    /// <param name="appSettings">The app settings</param>
     /// <param name="chatId">The chat id</param>
-    public DedicatedClient(IMemoryService memoryService, string openAiApiKey, long chatId)
+    public DedicatedClient(IMemoryService memoryService, AppSettings appSettings, long chatId)
     {
         ChatId = chatId;
         LastMessage = DateTimeOffset.UtcNow;
+
         _memoryService = memoryService;
+        _whisperClient = new WhisperClient(appSettings.OpenAiApiKey);
+        _googleSearchService = new GoogleSearchService(appSettings.GoogleApiKey, appSettings.GoogleSearchEngineId);
 
-        var function = _memoryService.GetMemoryFunction();
-
-        _whisperClient = new WhisperClient(openAiApiKey);
+        var memoryFunction = MemoryService.GetFunction();
+        var webScrapeFunction = WebBrowserService.GetFunction();
+        var googleSearchFunction = GoogleSearchService.GetFunction();
 
         _chatClient = ChatClient
-            .Create(openAiApiKey, "gpt-4-0613")
+            .Create(appSettings.OpenAiApiKey, "gpt-4-0613")
+            .SetClientTimeout(60)
             .AppendSystemMessage(InitializationMessage)
-            .AppendFunction(function);
+            .AppendFunction(memoryFunction)
+            .AppendFunction(webScrapeFunction)
+            .AppendFunction(googleSearchFunction);
 
         _functionHandlerFactory
-            .AddFunctionHandler(function.Name, async param => await _memoryService.GetMemoriesAsync(param));
+            .AddFunctionHandler(memoryFunction.Name, async param => await _memoryService.GetMemoriesAsync(param))
+            .AddFunctionHandler(webScrapeFunction.Name, async param => await WebBrowserService.BrowseAsync(param))
+            .AddFunctionHandler(googleSearchFunction.Name,
+                async param => await _googleSearchService.SearchAsync(param));
     }
 
     /// <summary>
@@ -97,13 +112,107 @@ public class DedicatedClient : IDedicatedClient
     ///     Gets the value of the user
     /// </summary>
     /// <value>System.Nullable&lt;string&gt;</value>
-    public string? User { get; set; }
+    public string? User { get; init; }
 
     /// <summary>
     ///     Gets or sets the value of the last message
     /// </summary>
     /// <value>System.DateTimeOffset</value>
     public DateTimeOffset LastMessage { get; private set; }
+
+    /// <summary>
+    ///     Submits the message
+    /// </summary>
+    /// <param name="chatId">The chat id</param>
+    /// <param name="message">The message</param>
+    /// <param name="systemMessage">The system message</param>
+    /// <returns>Task&lt;string?&gt;</returns>
+    public async Task<string?> SubmitAsync(long? chatId, string? message, string? systemMessage = null)
+    {
+        if (!chatId.HasValue)
+        {
+            throw new ArgumentNullException(nameof(chatId), "The chat id is required");
+        }
+
+        LastMessage = DateTimeOffset.UtcNow;
+        if (!string.IsNullOrWhiteSpace(systemMessage)) _chatClient.AppendSystemMessage(systemMessage);
+
+        var response = await _chatClient.SubmitAsync(message);
+        if (response is null) return null;
+
+        while (response.IsFunctionCall())
+        {
+            try
+            {
+                var functionCall = response.Choices[0].Message.FunctionCall;
+
+                var result = await _functionHandlerFactory
+                    .ExecuteFunctionHandlerAsync(functionCall.Name, functionCall.Arguments);
+
+                var functionResponse = result.Equals("[]")
+                    ? "Something went wrong."
+                    : result as string;
+
+                response = await _chatClient.SubmitFunctionResponseAsync(functionCall.Name, functionResponse);
+            }
+            catch (Exception ex)
+            {
+                return $"Error: {ex.Message}";
+            }
+        }
+
+        return response.IsSuccess()
+            ? response.Choices[0].Message.Content
+            : $"{response.Error.Type}: {response.Error.Message}";
+    }
+
+    /// <summary>
+    ///     Submits the voice note using the specified voice note url
+    /// </summary>
+    /// <param name="chatId">The chat id</param>
+    /// <param name="voiceNoteUrl">The voice note url</param>
+    /// <param name="systemMessage">The system message</param>
+    /// <returns>ValueTask&lt;(string? request, string? response)&gt;</returns>
+    public async ValueTask<(string? request, string? response)> SubmitVoiceNoteAsync(long? chatId, string? voiceNoteUrl,
+        string? systemMessage = null)
+    {
+        var directory = DirectoryBuilder.Build(ChatId);
+        var fileName = $"{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}.ogg";
+        var audioPath = Path.Combine(directory, fileName);
+
+        var bytes = await HttpClient.GetByteArrayAsync(voiceNoteUrl);
+        await File.WriteAllBytesAsync(audioPath, bytes);
+        return await SubmitVoiceNoteToWhisperAndChatGptAsync(chatId, audioPath, systemMessage);
+    }
+
+    /// <summary>
+    ///     Submits the voice note to whisper and chat gpt using the specified chat id
+    /// </summary>
+    /// <param name="chatId">The chat id</param>
+    /// <param name="filePath">The file path</param>
+    /// <param name="systemMessage">The system message</param>
+    /// <returns>ValueTask&lt;(string? request, string? response)&gt;</returns>
+    private async ValueTask<(string? request, string? response)> SubmitVoiceNoteToWhisperAndChatGptAsync(long? chatId,
+        string? filePath, string? systemMessage = null)
+    {
+        LastMessage = DateTimeOffset.UtcNow;
+
+        if (string.IsNullOrWhiteSpace(filePath)) return ("N/A", "Error: No voice note found.");
+
+        filePath = new OggToWavConverter().ConvertToWav(filePath, ChatId);
+
+        var whisperResponse = await _whisperClient.SubmitAsync(filePath);
+
+        if (whisperResponse == null) return ("N/A", "Error: No response received.");
+        if (!whisperResponse.IsSuccess) return ("N/A", whisperResponse.Error?.Message);
+
+        var request = whisperResponse.Text;
+        var response = await SubmitAsync(chatId, whisperResponse.Text, systemMessage);
+
+        return (request, response);
+    }
+
+    #region ICHATCLIENT
 
     /// <summary>
     ///     Appends the system message using the specified message
@@ -176,111 +285,5 @@ public class DedicatedClient : IDedicatedClient
         return await _chatClient.SubmitAsync(requestModel);
     }
 
-    /// <summary>
-    ///     Submits the message
-    /// </summary>
-    /// <param name="chatId">The chat id</param>
-    /// <param name="message">The message</param>
-    /// <param name="systemMessage">The system message</param>
-    /// <returns>Task&lt;string?&gt;</returns>
-    public async Task<string?> SubmitAsync(long? chatId, string? message, string? systemMessage = null)
-    {
-        if (!chatId.HasValue)
-        {
-            throw new ArgumentNullException(nameof(chatId), "The chat id is required");
-        }
-
-        LastMessage = DateTimeOffset.UtcNow;
-        if (!string.IsNullOrWhiteSpace(systemMessage))
-        {
-            _chatClient.AppendSystemMessage(systemMessage);
-        }
-
-        var response = await _chatClient.SubmitAsync(message);
-
-        if (response is null)
-        {
-            return null;
-        }
-
-        while (response.IsFunctionCall())
-        {
-            try
-            {
-                var functionCall = response.Choices[0].Message.FunctionCall;
-
-                var result = await _functionHandlerFactory
-                    .ExecuteFunctionHandlerAsync(functionCall.Name, functionCall.Arguments);
-
-                var functionResponse = result.Equals("[]")
-                    ? "Something went wrong."
-                    : result as string;
-
-                response = await _chatClient.SubmitFunctionResponseAsync(functionCall.Name, functionResponse);
-            }
-            catch (Exception ex)
-            {
-                return $"Error: {ex.Message}";
-            }
-        }
-
-        return response.IsSuccess()
-            ? response.Choices[0].Message.Content
-            : $"{response.Error.Type}: {response.Error.Message}";
-    }
-
-    /// <summary>
-    ///     Submits the voice note using the specified voice note url
-    /// </summary>
-    /// <param name="chatId">The chat id</param>
-    /// <param name="voiceNoteUrl">The voice note url</param>
-    /// <param name="systemMessage">The system message</param>
-    /// <returns>ValueTask&lt;(string? request, string? response)&gt;</returns>
-    public async ValueTask<(string? request, string? response)> SubmitVoiceNoteAsync(long? chatId, string? voiceNoteUrl,
-        string? systemMessage = null)
-    {
-        var directory = DirectoryBuilder.Build(ChatId);
-        var fileName = $"{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}.ogg";
-        var audioPath = Path.Combine(directory, fileName);
-
-        var bytes = await _httpClient.GetByteArrayAsync(voiceNoteUrl);
-        await File.WriteAllBytesAsync(audioPath, bytes);
-        return await SubmitVoiceNoteToWhisperAndChatGptAsync(chatId, audioPath, systemMessage);
-    }
-
-    /// <summary>
-    ///     Submits the voice note to whisper and chat gpt using the specified chat id
-    /// </summary>
-    /// <param name="chatId">The chat id</param>
-    /// <param name="filePath">The file path</param>
-    /// <param name="systemMessage">The system message</param>
-    /// <returns>ValueTask&lt;(string? request, string? response)&gt;</returns>
-    private async ValueTask<(string? request, string? response)> SubmitVoiceNoteToWhisperAndChatGptAsync(long? chatId,
-        string? filePath, string? systemMessage = null)
-    {
-        LastMessage = DateTimeOffset.UtcNow;
-
-        if (string.IsNullOrWhiteSpace(filePath))
-        {
-            return ("N/A", "Error: No voice note found.");
-        }
-
-        filePath = new OggToWavConverter().ConvertToWav(filePath, ChatId);
-
-        var whisperResponse = await _whisperClient.SubmitAsync(filePath);
-        if (whisperResponse == null)
-        {
-            return ("N/A", "Error: No response received.");
-        }
-
-        if (!whisperResponse.IsSuccess)
-        {
-            return ("N/A", whisperResponse.Error?.Message);
-        }
-
-        var request = whisperResponse.Text;
-        var response = await SubmitAsync(chatId, whisperResponse.Text, systemMessage);
-
-        return (request, response);
-    }
+    #endregion
 }

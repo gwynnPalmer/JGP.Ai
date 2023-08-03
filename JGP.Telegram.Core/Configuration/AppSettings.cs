@@ -21,4 +21,16 @@ public class AppSettings
     /// </summary>
     /// <value>System.String</value>
     public string OpenAiApiKey { get; set; }
+
+    /// <summary>
+    ///     Gets or sets the value of the google api key
+    /// </summary>
+    /// <value>System.String</value>
+    public string GoogleApiKey { get; set; }
+
+    /// <summary>
+    ///     Gets or sets the value of the google search engine id
+    /// </summary>
+    /// <value>System.String</value>
+    public string GoogleSearchEngineId { get; set; }
 }

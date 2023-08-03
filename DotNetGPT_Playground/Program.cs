@@ -1,5 +1,5 @@
-﻿using DotNetGPT;
-using DotNetGPT.Clients;
+﻿using JGP.DotNetGPT;
+using JGP.DotNetGPT.Clients;
 
 namespace DotNetGPT_Playground;
 

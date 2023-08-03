@@ -1,4 +1,4 @@
-using DotNetGPT.Models;
+using JGP.DotNetGPT.Models;
 using JGP.Telegram.Core;
 using JGP.Telegram.Core.FunctionParameters;
 using JGP.Telegram.Data;
@@ -38,12 +38,6 @@ public interface IMemoryService : IDisposable
     /// <param name="parametersJson">The parameters json</param>
     /// <returns>Task&lt;string&gt;</returns>
     Task<string> GetMemoriesAsync(string parametersJson);
-
-    /// <summary>
-    ///     Gets the memory function
-    /// </summary>
-    /// <returns>MS.Internal.Xml.XPath.Function</returns>
-    Function GetMemoryFunction();
 }
 
 /// <summary>
@@ -187,8 +181,8 @@ public class MemoryService : IMemoryService
     ///     Gets the memory function
     /// </summary>
     /// <exception cref="NotImplementedException"></exception>
-    /// <returns>MS.Internal.Xml.XPath.Function</returns>
-    public Function GetMemoryFunction()
+    /// <returns>Function</returns>
+    public static Function GetFunction()
     {
         return new Function
         {

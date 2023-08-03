@@ -2,16 +2,16 @@ using System.Text;
 using JGP.Core.Services;
 using JGP.Telegram.Core.Commands;
 using JGP.Telegram.Core.Configuration;
+using JGP.Telegram.Services;
 using JGP.Telegram.Services.Clients;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
 using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using User = JGP.Telegram.Core.User;
 
-namespace JGP.Telegram.Services;
+namespace App.WindowsService;
 
 /// <summary>
 ///     Interface bot runner
@@ -137,7 +137,7 @@ public class BotRunner : IBotRunner
         var client = _dedicatedClients.Find(client => client.ChatId == chatId);
         if (client is not null) return client;
 
-        client = new DedicatedClient(_memoryService, _appSettings.OpenAiApiKey, chatId)
+        client = new DedicatedClient(_memoryService, _appSettings, chatId)
         {
             User = user
         };

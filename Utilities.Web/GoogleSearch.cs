@@ -51,6 +51,12 @@ public class GoogleSearch
         _searchEngineId = searchEngineId;
     }
 
+    public GoogleSearch(string apiKey, string searchEngineId)
+    {
+        _apiKey = apiKey;
+        _searchEngineId = searchEngineId;
+    }
+
     /// <summary>
     ///     Gets the result links using the specified query
     /// </summary>
@@ -78,6 +84,16 @@ public class GoogleSearch
 
         var content = await response.Content.ReadAsStringAsync();
         return JsonSerializer.Deserialize<GoogleSearchResultModel>(content);
+    }
+
+    public async Task<string> JsonSearchAsync(string query, int maxResults = 8)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, BuildRequestUrl(query, maxResults));
+        using var response = await Client.SendAsync(request);
+
+        if (!response.IsSuccessStatusCode) return "No results found.";
+
+        return await response.Content.ReadAsStringAsync();
     }
 
     /// <summary>

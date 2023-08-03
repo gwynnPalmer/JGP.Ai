@@ -18,13 +18,24 @@ public static class AppSettingsConfiguration
         configuration.GetSection(AppSettings.ConfigurationSectionName).Bind(appSettings);
 
         var telegramApiKey =
-            Environment.GetEnvironmentVariable("JGP_TELEGRAM_JGPTBOT_APIKEY", EnvironmentVariableTarget.User) ??
-            Environment.GetEnvironmentVariable("JGP_TELEGRAM_JGPTBOT_APIKEY", EnvironmentVariableTarget.Machine);
+            Environment.GetEnvironmentVariable("JGP_TELEGRAM_JGPTBOT_APIKEY", EnvironmentVariableTarget.User)
+            ?? Environment.GetEnvironmentVariable("JGP_TELEGRAM_JGPTBOT_APIKEY", EnvironmentVariableTarget.Machine);
         if (!string.IsNullOrEmpty(telegramApiKey)) appSettings.TelegramApiKey = telegramApiKey;
 
-        var openAiApiKey = Environment.GetEnvironmentVariable("JGP_CHATGPT_APIKEY", EnvironmentVariableTarget.User) ??
-                           Environment.GetEnvironmentVariable("JGP_CHATGPT_APIKEY", EnvironmentVariableTarget.Machine);
+        var openAiApiKey =
+            Environment.GetEnvironmentVariable("JGP_CHATGPT_APIKEY", EnvironmentVariableTarget.User)
+            ?? Environment.GetEnvironmentVariable("JGP_CHATGPT_APIKEY", EnvironmentVariableTarget.Machine);
         if (!string.IsNullOrEmpty(openAiApiKey)) appSettings.OpenAiApiKey = openAiApiKey;
+
+        var googleApiKey =
+            Environment.GetEnvironmentVariable("JGP_GOOGLE_AI_APIKEY", EnvironmentVariableTarget.User)
+            ?? Environment.GetEnvironmentVariable("JGP_GOOGLE_AI_APIKEY", EnvironmentVariableTarget.Machine);
+        if (!string.IsNullOrEmpty(googleApiKey)) appSettings.GoogleApiKey = googleApiKey;
+
+        var googleSearchEngineId =
+            Environment.GetEnvironmentVariable("JGP_GOOGLE_CUSTOMSEARCHID", EnvironmentVariableTarget.User)
+            ?? Environment.GetEnvironmentVariable("JGP_GOOGLE_CUSTOMSEARCHID", EnvironmentVariableTarget.Machine);
+        if (!string.IsNullOrEmpty(googleSearchEngineId)) appSettings.GoogleSearchEngineId = googleSearchEngineId;
 
         return appSettings;
     }

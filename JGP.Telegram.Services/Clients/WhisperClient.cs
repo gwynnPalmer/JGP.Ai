@@ -1,6 +1,6 @@
 using System.Net.Http.Headers;
 using System.Text.Json;
-using DotNetGPT.Models;
+using JGP.DotNetGPT.Models;
 
 namespace JGP.Telegram.Services.Clients;
 
@@ -24,7 +24,7 @@ public class WhisperClient
     /// </summary>
     private static readonly HttpClient _httpClient = new()
     {
-        Timeout = TimeSpan.FromSeconds(30)
+        Timeout = TimeSpan.FromSeconds(60)
     };
 
     /// <summary>
