@@ -20,7 +20,7 @@ public class OggToWavConverter
     {
         if (string.IsNullOrWhiteSpace(oggFilePath)) return null;
 
-        var wavFilePath = BuildWavFilePath(directory: null, chatId);
+        var wavFilePath = BuildWavFilePath(null, chatId);
 
         using var fileStream = new FileStream(oggFilePath, FileMode.Open, FileAccess.Read);
         using var memoryStream = new MemoryStream();

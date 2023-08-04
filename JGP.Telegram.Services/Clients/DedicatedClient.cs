@@ -1,6 +1,7 @@
 using JGP.DotNetGPT;
 using JGP.DotNetGPT.Clients;
-using JGP.DotNetGPT.Models;
+using JGP.DotNetGPT.Core.Constants;
+using JGP.DotNetGPT.Core.Models;
 using JGP.Telegram.Core.Configuration;
 using JGP.Telegram.Services.Builders;
 using JGP.Telegram.Services.FileConverters;
@@ -11,7 +12,8 @@ namespace JGP.Telegram.Services.Clients;
 ///     Interface dedicated client
 /// </summary>
 /// <seealso cref="IChatClient" />
-public interface IDedicatedClient : IChatClient
+/// <seealso cref="IDisposable" />
+public interface IDedicatedClient : IChatClient, IDisposable
 {
     /// <summary>
     ///     Submits the message
@@ -88,7 +90,7 @@ public class DedicatedClient : IDedicatedClient
         var googleSearchFunction = GoogleSearchService.GetFunction();
 
         _chatClient = ChatClient
-            .Create(appSettings.OpenAiApiKey, "gpt-4-0613")
+            .Create(appSettings.OpenAiApiKey, ModelConstants.GPT35Turbo16k0613)
             .SetClientTimeout(60)
             .AppendSystemMessage(InitializationMessage)
             .AppendFunction(memoryFunction)
@@ -97,7 +99,11 @@ public class DedicatedClient : IDedicatedClient
 
         _functionHandlerFactory
             .AddFunctionHandler(memoryFunction.Name, async param => await _memoryService.GetMemoriesAsync(param))
-            .AddFunctionHandler(webScrapeFunction.Name, async param => await WebBrowserService.BrowseAsync(param))
+            .AddFunctionHandler(webScrapeFunction.Name, async param =>
+            {
+                using var webBrowserService = new WebBrowserService();
+                return await webBrowserService.BrowseAsync(param);
+            })
             .AddFunctionHandler(googleSearchFunction.Name,
                 async param => await _googleSearchService.SearchAsync(param));
     }
@@ -149,21 +155,30 @@ public class DedicatedClient : IDedicatedClient
                 var result = await _functionHandlerFactory
                     .ExecuteFunctionHandlerAsync(functionCall.Name, functionCall.Arguments);
 
-                var functionResponse = result.Equals("[]")
-                    ? "Something went wrong."
-                    : result as string;
+                var functionResponse = result as string;
 
                 response = await _chatClient.SubmitFunctionResponseAsync(functionCall.Name, functionResponse);
             }
             catch (Exception ex)
             {
-                return $"Error: {ex.Message}";
+                while (ex.InnerException is not null) ex = ex.InnerException;
+
+                return
+                    $"Something went wrong when executing a function: [{response?.Choices[0].Message?.FunctionCall?.Name}] {ex.Message}";
             }
         }
 
         return response.IsSuccess()
-            ? response.Choices[0].Message.Content
-            : $"{response.Error.Type}: {response.Error.Message}";
+            ? response.Choices[0].Message?.Content
+            : $"{response.Error?.Type}: {response.Error?.Message}";
+    }
+
+    /// <summary>
+    ///     Disposes this instance
+    /// </summary>
+    public void Dispose()
+    {
+        _memoryService.Dispose();
     }
 
     /// <summary>

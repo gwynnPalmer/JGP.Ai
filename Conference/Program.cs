@@ -14,16 +14,16 @@ public static class Program
     public static async Task Main()
     {
         var apiKey = GetApiKey();
-        
+
         var host = BuildHost(apiKey);
         var member1 = BuildMember(apiKey, 1);
         var member2 = BuildMember(apiKey, 2);
 
         var context = new StringBuilder();
-        
+
         var userMessage = Console.ReadLine();
         context.Append("User: " + userMessage);
-        
+
         var initialResponse = await host.SubmitAsync(context.ToString(), "You will address Member1");
         context.AppendLine("-----")
             .AppendLine("-----")
@@ -33,18 +33,20 @@ public static class Program
         {
             while (!context.ToString().Contains("TERMINATE", StringComparison.OrdinalIgnoreCase))
             {
-        
-                var member1Response = await member1.SubmitAsync(context.ToString(), "You will address Member2, you can abandon the conversation by saying 'terminate'");
+                var member1Response = await member1.SubmitAsync(context.ToString(),
+                    "You will address Member2, you can abandon the conversation by saying 'terminate'");
                 context.AppendLine("-----")
                     .AppendLine("-----")
                     .AppendLine(member1Response);
-        
-                var member2Response = await member2.SubmitAsync(context.ToString(), "You will address the host, you can abandon the conversation by saying 'terminate'");
+
+                var member2Response = await member2.SubmitAsync(context.ToString(),
+                    "You will address the host, you can abandon the conversation by saying 'terminate'");
                 context.AppendLine("-----")
                     .AppendLine("-----")
                     .AppendLine(member2Response);
-        
-                var hostResponse = await host.SubmitAsync(context.ToString(), "You may address Member1 if you feel there is more to discuss, say 'terminate' at any point to end the conversation.");
+
+                var hostResponse = await host.SubmitAsync(context.ToString(),
+                    "You may address Member1 if you feel there is more to discuss, say 'terminate' at any point to end the conversation.");
                 context.AppendLine("-----")
                     .AppendLine("-----")
                     .AppendLine(hostResponse);
@@ -63,15 +65,17 @@ public static class Program
     private static ConferenceMember BuildMember(string apiKey, int index)
     {
         var memberMessage = new StringBuilder()
-            .AppendLine($"You are Member{index}, part of a committee with two other people. You are a member of the committee.")
+            .AppendLine(
+                $"You are Member{index}, part of a committee with two other people. You are a member of the committee.")
             .AppendLine("The user will be the first person to speak.")
             .AppendLine("They will likely ask questions, and you will discuss them with the other committee members.")
-            .AppendLine("The user will first address the chair, who will address the next member and so on, eventually going back to the chair who will respond to the user.")
+            .AppendLine(
+                "The user will first address the chair, who will address the next member and so on, eventually going back to the chair who will respond to the user.")
             .AppendLine($"You must start your response with 'Member{index}:'.")
             .ToString();
-        
+
         var random = new Random();
-        
+
         var temperature = random.NextDouble();
         while (temperature < 0.7)
         {
@@ -90,8 +94,10 @@ public static class Program
     {
         var hostMessage = new StringBuilder()
             .AppendLine("You are the chair of a committee.")
-            .AppendLine("The user will likely ask questions, and you will discuss them with the other committee members.")
-            .AppendLine("The user will first address you, and you will address the next member and so on, eventually going back to you who will respond to the user.")
+            .AppendLine(
+                "The user will likely ask questions, and you will discuss them with the other committee members.")
+            .AppendLine(
+                "The user will first address you, and you will address the next member and so on, eventually going back to you who will respond to the user.")
             .AppendLine("You must start your response with 'Host:'.")
             .AppendLine("Say 'terminate' at any point to end the conversation.")
             .ToString();

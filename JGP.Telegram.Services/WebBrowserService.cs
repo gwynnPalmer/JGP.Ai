@@ -1,35 +1,68 @@
-using System.Net;
-using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using HtmlAgilityPack;
-using JGP.DotNetGPT.Models;
+using JGP.DotNetGPT.Core.Models;
+using OpenQA.Selenium;
+using OpenQA.Selenium.Firefox;
+using OpenQA.Selenium.Support.UI;
 
 namespace JGP.Telegram.Services;
 
-/// <summary>
-///     Class web browser service
-/// </summary>
-public class WebBrowserService
+public class WebBrowserService : IDisposable
 {
     /// <summary>
-    ///     The default request headers
+    ///     The implicit wait
     /// </summary>
-    private static readonly HttpClient HttpClient = new HttpClient(new HttpClientHandler
+    private const int ImplicitWait = 60;
+
+    /// <summary>
+    ///     The wait
+    /// </summary>
+    private readonly WebDriverWait? _wait;
+
+    private readonly IWebDriver _webDriver;
+
+    public WebBrowserService()
     {
-        CookieContainer = new CookieContainer()
-    })
+        var options = new FirefoxOptions
+        {
+            AcceptInsecureCertificates = true
+        };
+        options.AddArgument("-headless");
+
+        var service = FirefoxDriverService.CreateDefaultService(@"C:\\Development\\WebDrivers");
+        service.LogLevel = FirefoxDriverLogLevel.Info;
+        service.FirefoxBinaryPath = @"C:\Program Files\Mozilla Firefox\firefox.exe";
+        //service.Host = "::1";
+
+        _webDriver = new FirefoxDriver(service, options);
+        _webDriver.Manage().Cookies.DeleteAllCookies();
+        _webDriver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(ImplicitWait);
+        _webDriver.Manage().Timeouts().PageLoad = TimeSpan.FromSeconds(ImplicitWait);
+        _webDriver.Manage().Window.Maximize();
+
+        _wait ??= new WebDriverWait(_webDriver, TimeSpan.FromSeconds(ImplicitWait))
+        {
+            PollingInterval = TimeSpan.FromMilliseconds(500),
+            Message = "Timeout occurred",
+            Timeout = TimeSpan.FromSeconds(ImplicitWait)
+        };
+    }
+
+    public void Dispose()
     {
-        Timeout = TimeSpan.FromSeconds(45)
-    };
+        _webDriver?.Close();
+        _webDriver?.Quit();
+        _webDriver?.Dispose();
+    }
 
     /// <summary>
     ///     Browses the parameters json
     /// </summary>
     /// <param name="parametersJson">The parameters json</param>
     /// <returns>The text</returns>
-    public static async ValueTask<string?> BrowseAsync(string? parametersJson)
+    public async ValueTask<string?> BrowseAsync(string? parametersJson)
     {
         if (string.IsNullOrWhiteSpace(parametersJson))
         {
@@ -52,16 +85,22 @@ public class WebBrowserService
     /// </summary>
     /// <param name="url">The url</param>
     /// <returns>Task&lt;string&gt;</returns>
-    private static async ValueTask<string> BrowseUrlAsync(string? url)
+    private async ValueTask<string> BrowseUrlAsync(string? url)
     {
         if (string.IsNullOrWhiteSpace(url))
         {
             return "Error: Invalid URL - URL cannot be empty";
         }
 
-        var response = await HttpClient.GetAsync(url);
-        var html = await response.Content.ReadAsStringAsync();
-        return ConvertHtmlToText(html);
+        //var response = await HttpClient.GetAsync(url);
+        _webDriver.Navigate().GoToUrl(url);
+        _wait.Until(driver => driver.Url == url);
+        _wait.Until(driver => driver.PageSource.Length > 0);
+
+        var html = _webDriver.PageSource;
+        return string.IsNullOrWhiteSpace(html)
+            ? "Error: No HTML was returned"
+            : ConvertHtmlToText(html);
     }
 
     /// <summary>
@@ -97,8 +136,7 @@ public class WebBrowserService
 
         // Extract the text content
         var text = htmlDocument.DocumentNode.DescendantsAndSelf()
-            .Where(n => n.NodeType == HtmlNodeType.Text && n.ParentNode.Name != "script" &&
-                        n.ParentNode.Name != "style")
+            .Where(n => n.NodeType == HtmlNodeType.Text)
             .Select(n => n.InnerText.Trim())
             .Where(s => !string.IsNullOrEmpty(s))
             .Aggregate(new StringBuilder(), (sb, s) => sb.AppendLine(s), sb => sb.ToString());
@@ -115,8 +153,9 @@ public class WebBrowserService
     {
         return new Function
         {
-            Name = "BrowseUrl",
-            Description = "Browses the URL and returns the text content. Useful in conjunction with a 'Search' function.",
+            Name = "BrowseWebsite",
+            Description =
+                "Use Selenium to browse a given URL and returns the available text content. Useful in conjunction with a 'Search' function.",
             Parameters = new Parameter
             {
                 Type = "object",

@@ -1,6 +1,6 @@
 using System.Net.Http.Headers;
 using System.Text.Json;
-using JGP.DotNetGPT.Models;
+using JGP.DotNetGPT.Core.Models;
 
 namespace JGP.Telegram.Services.Clients;
 

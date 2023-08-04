@@ -1,4 +1,4 @@
-using JGP.DotNetGPT.Models;
+using JGP.DotNetGPT.Core.Models;
 using JGP.Telegram.Core;
 using JGP.Telegram.Core.FunctionParameters;
 using JGP.Telegram.Data;
@@ -107,7 +107,7 @@ public class MemoryService : IMemoryService
             var chatLogs = await _chatContext.ChatLogs
                 .AsNoTracking()
                 .Where(x => x.ChatId == chatIdString && (x.Request.Contains(keyword) || x.Response.Contains(keyword)))
-                .OrderBy(x => x.MessageDate)
+                .OrderByDescending(x => x.MessageDate)
                 .Skip(skip)
                 .Take(take)
                 .ToArrayAsync();
@@ -161,7 +161,8 @@ public class MemoryService : IMemoryService
         try
         {
             var parameters = JsonConvert.DeserializeObject<MemoryFunctionParameters>(parametersJson);
-            var results = await GetMemoriesAsync(parameters.ChatId, parameters.Keyword, parameters.Skip, parameters.Take);
+            var results =
+                await GetMemoriesAsync(parameters.ChatId, parameters.Keyword, parameters.Skip, parameters.Take);
 
             return results.Count == 0
                 ? "No results found"
@@ -180,14 +181,14 @@ public class MemoryService : IMemoryService
     /// <summary>
     ///     Gets the memory function
     /// </summary>
-    /// <exception cref="NotImplementedException"></exception>
     /// <returns>Function</returns>
     public static Function GetFunction()
     {
         return new Function
         {
             Name = "SearchMemories",
-            Description = "Searches all chat history with the user for messages containing the specified keyword.",
+            Description =
+                "Searches chat history with the user (ordered by most recent first) for messages containing the specified keyword.",
             Parameters = new Parameter
             {
                 Type = "object",

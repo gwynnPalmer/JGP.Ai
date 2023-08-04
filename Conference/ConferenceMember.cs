@@ -82,7 +82,7 @@ internal class ConferenceMember : IGPTClient
         systemMessage = string.IsNullOrWhiteSpace(systemMessage)
             ? SystemMessage
             : SystemMessage + Environment.NewLine + systemMessage;
-        
+
         if (!string.IsNullOrWhiteSpace(systemMessage))
         {
             _conversation.AppendSystemMessage(systemMessage);

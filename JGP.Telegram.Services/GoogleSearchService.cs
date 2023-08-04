@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Web;
-using JGP.DotNetGPT.Models;
+using JGP.DotNetGPT.Core.Models;
 using JGP.Telegram.Models.Google;
 using JGP.Telegram.Services.Builders;
 
@@ -111,7 +111,8 @@ public class GoogleSearchService
         return new Function
         {
             Name = "GoogleSearch",
-            Description = "Searches Google for the specified query, useful in conjunction with a url browsing function.",
+            Description =
+                "Searches Google for the specified query, useful in conjunction with a url browsing function.",
             Parameters = new Parameter
             {
                 Type = "object",

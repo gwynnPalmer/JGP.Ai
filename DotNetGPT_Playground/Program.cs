@@ -1,5 +1,4 @@
-﻿using JGP.DotNetGPT;
-using JGP.DotNetGPT.Clients;
+﻿using JGP.DotNetGPT.Clients;
 
 namespace DotNetGPT_Playground;
 
@@ -13,7 +12,7 @@ internal static class Program
         var chatClient = ChatClient.Create(openAiApiKey, "gpt-4-0613");
         var input = Console.ReadLine();
 
-        while(!string.IsNullOrWhiteSpace(input))
+        while (!string.IsNullOrWhiteSpace(input))
         {
             var response = await chatClient.SubmitAsync(input);
 

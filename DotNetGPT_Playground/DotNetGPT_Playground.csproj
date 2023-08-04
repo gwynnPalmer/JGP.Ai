@@ -9,7 +9,7 @@
 
 
     <ItemGroup>
-      <PackageReference Include="JGP.DotNetGPT" Version="1.0.2" />
+        <PackageReference Include="JGP.DotNetGPT" Version="1.0.3-preview-10" />
     </ItemGroup>
 
 </Project>

@@ -76,7 +76,8 @@ public class BotRunner : IBotRunner
     /// <param name="memoryService">The memory service</param>
     /// <param name="userService">The user service</param>
     /// <param name="appSettings">The app settings</param>
-    public BotRunner(ILogger<BotRunner> logger, IMemoryCache memoryCache, IMemoryService memoryService, IUserService userService,
+    public BotRunner(ILogger<BotRunner> logger, IMemoryCache memoryCache, IMemoryService memoryService,
+        IUserService userService,
         AppSettings appSettings)
     {
         _logger = logger;
@@ -261,7 +262,7 @@ public class BotRunner : IBotRunner
 
         var systemMessage = string.IsNullOrWhiteSpace(client.User)
             ? null
-            : $"You are speaking with {client.User}, ChatId: {chatId}";
+            : $"You are speaking with {client.User}, ChatId: {chatId}. Remember to explain your chain of thought when responding.";
 
         var response = await client.SubmitAsync(chatId, messageText, systemMessage);
 
@@ -289,7 +290,7 @@ public class BotRunner : IBotRunner
 
         var systemMessage = string.IsNullOrWhiteSpace(client.User)
             ? null
-            : $"You are speaking with {client.User}, ChatId: {chatId}";
+            : $"You are speaking with {client.User}, ChatId: {chatId}. Remember to explain your chain of thought when responding.";
 
         var (request, response) = await client.SubmitVoiceNoteAsync(chatId, fileUrl, systemMessage);
         _logger.LogInformation("Voice note request: {Request}", request);

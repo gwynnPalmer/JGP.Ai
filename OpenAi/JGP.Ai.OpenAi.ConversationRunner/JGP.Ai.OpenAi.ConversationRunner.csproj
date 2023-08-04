@@ -8,7 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\JGP.Ai.OpenAi.Clients\JGP.Ai.OpenAi.Clients.csproj" />
+        <ProjectReference Include="..\JGP.Ai.OpenAi.Clients\JGP.Ai.OpenAi.Clients.csproj"/>
     </ItemGroup>
 
 </Project>

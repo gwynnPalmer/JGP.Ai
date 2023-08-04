@@ -7,19 +7,20 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\JGP.Telegram.Data.EntityFramework\JGP.Telegram.Data.EntityFramework.csproj" />
-        <ProjectReference Include="..\JGP.Telegram.Models\JGP.Telegram.Models.csproj" />
+        <ProjectReference Include="..\JGP.Telegram.Data.EntityFramework\JGP.Telegram.Data.EntityFramework.csproj"/>
+        <ProjectReference Include="..\JGP.Telegram.Models\JGP.Telegram.Models.csproj"/>
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="HtmlAgilityPack" Version="1.11.51" />
-        <PackageReference Include="JGP.Core" Version="1.0.6" />
-        <PackageReference Include="JGP.DotNetGPT" Version="1.0.2" />
-        <PackageReference Include="Telegram.Bot" Version="19.0.0" />
-        <PackageReference Include="Concentus" Version="1.1.7" />
-        <PackageReference Include="Concentus.OggFile" Version="1.0.4" />
-        <PackageReference Include="NAudio.Core" Version="2.1.0" />
-        <PackageReference Include="NVorbis" Version="0.10.5" />
+        <PackageReference Include="HtmlAgilityPack" Version="1.11.51"/>
+        <PackageReference Include="JGP.Core" Version="1.0.6"/>
+        <PackageReference Include="JGP.DotNetGPT" Version="1.0.3-preview-10"/>
+        <PackageReference Include="Selenium.WebDriver" Version="4.11.0"/>
+        <PackageReference Include="Telegram.Bot" Version="19.0.0"/>
+        <PackageReference Include="Concentus" Version="1.1.7"/>
+        <PackageReference Include="Concentus.OggFile" Version="1.0.4"/>
+        <PackageReference Include="NAudio.Core" Version="2.1.0"/>
+        <PackageReference Include="NVorbis" Version="0.10.5"/>
     </ItemGroup>
 
 </Project>
